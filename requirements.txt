@@ -1,0 +1,5 @@
+pywin32>=306
+PyQt6>=6.6
+PyQt6-WebEngine>=6.6
+psutil>=5.9
+matplotlib>=3.8

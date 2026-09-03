@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mouse World Tour Globe</title>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js"></script>
+<style>
+  html, body, #cesiumContainer {
+    width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+    background: #05070d;
+  }
+  #statsCard {
+    position: absolute; top: 18px; right: 18px; z-index: 10;
+    background: rgba(12, 16, 26, 0.72); backdrop-filter: blur(6px);
+    color: #eef0f6; padding: 14px 18px; border-radius: 14px;
+    font-family: 'Segoe UI', sans-serif;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    min-width: 220px;
+  }
+  #statsCard .header {
+    font-size: 15px; font-weight: 700; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  #statsCard .row { display: flex; justify-content: space-between; gap: 14px; padding: 3px 0; }
+  #statsCard .label { color: #9aa4b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+  #statsCard .value { font-size: 14px; font-weight: 600; text-align: right; }
+  #statsCard .coords { margin-top: 8px; font-size: 10px; color: #6f7890; text-align: right; }
+  #loadingMsg {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #aab2c5; font-family: 'Segoe UI', sans-serif; font-size: 14px;
+    z-index: 5;
+  }
+</style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id="statsCard">
+  <div class="header">🐭 Mouse World Tour</div>
+  <div class="row"><span class="label">Distance Travelled</span><span class="value" id="statDistance">0.00 km</span></div>
+  <div class="row"><span class="label">Current City</span><span class="value" id="statCity">--</span></div>
+  <div class="row"><span class="label">Total Time</span><span class="value" id="statTime">00:00:00</span></div>
+  <div class="coords" id="statCoords">Lat --, Lon --</div>
+</div>
+<div id="loadingMsg">Loading globe...</div>
+<script src="globe.js"></script>
+</body>
+</html>

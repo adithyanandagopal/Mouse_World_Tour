@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Mouse World Tour runtime data (personal, generated locally, not for the repo)
+data/
+
+# Editor/OS cruft
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Exported route files (saved wherever the user chooses, but ignore if left in repo root)
+*.gpx
