@@ -65,3 +65,6 @@ class GlobeVisualizer(QWebEngineView):
     def replay_step(self, lat, lon, direction):
         d = direction or ""
         self._run(f"window.replayStep({lat}, {lon}, '{d}');")
+
+    def set_distance_hidden(self, hidden):
+        self._run(f"window.setDistanceHidden({'true' if hidden else 'false'});")

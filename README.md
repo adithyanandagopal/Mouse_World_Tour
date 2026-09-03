@@ -2,11 +2,11 @@
 
 
 
-# Mouse World Tour 🐭🌍
+# Mouse World Tour
 
 
 ## Basic Details
-### Team Name: [Name]
+### Team Name: USELESS
 
 
 ### Team Members

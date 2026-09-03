@@ -1,4 +1,3 @@
-"""DashboardUI: the left-hand statistics panel plus Settings/History/Replay dialogs."""
 import os
 
 from PyQt6.QtCore import Qt, QTimer

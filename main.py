@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
     QFileDialog,
+    QInputDialog,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -41,26 +42,6 @@ try:
 except ImportError:
     winsound = None
 
-DARK_QSS = """
-QMainWindow, QWidget, QDialog { background-color: #12151f; color: #e8e8ec; font-family: 'Segoe UI'; }
-QGroupBox { border: 1px solid #2a2f3d; border-radius: 8px; margin-top: 10px; padding-top: 8px; font-weight: 600; }
-QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; color: #c7cede; }
-QPushButton { background-color: #1e2330; border: 1px solid #333a4d; border-radius: 6px; padding: 6px 10px; }
-QPushButton:hover { background-color: #2a3145; }
-QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTableWidget { background-color: #1a1e2a; border: 1px solid #333a4d; border-radius: 4px; padding: 3px; }
-QMenuBar { background-color: #12151f; }
-QMenuBar::item:selected { background-color: #2a3145; }
-QMenu { background-color: #1a1e2a; }
-QMenu::item:selected { background-color: #2a3145; }
-"""
-
-LIGHT_QSS = """
-QMainWindow, QWidget, QDialog { background-color: #f4f5f8; color: #202430; font-family: 'Segoe UI'; }
-QGroupBox { border: 1px solid #d6d9e2; border-radius: 8px; margin-top: 10px; padding-top: 8px; font-weight: 600; }
-QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }
-QPushButton { background-color: #ffffff; border: 1px solid #c7cbd6; border-radius: 6px; padding: 6px 10px; }
-QPushButton:hover { background-color: #e8eaf0; }
-"""
 
 
 def format_duration(total_seconds):
@@ -86,7 +67,6 @@ def make_emoji_icon(emoji, size=64):
 
 
 class DashboardDialog(QDialog):
-    """Floating, non-modal window holding the detailed stats panel."""
 
     def __init__(self, stats_panel, parent=None):
         super().__init__(parent)
@@ -130,6 +110,7 @@ class MouseWorldTourApp(QMainWindow):
         self._today_total = self.storage.day_distance(self._today_str)
         self._replay_active = False
         self._window_visible = False
+        self._dashboard_open = False
         self._quitting = False
         self._last_direction = None
 
@@ -163,7 +144,7 @@ class MouseWorldTourApp(QMainWindow):
             4000,
         )
 
-    # ---------- setup ----------
+    #setup 
     def _run_welcome_dialog(self, first_run):
         dlg = WelcomeDialog(self.config)
         dlg.exec()
@@ -237,13 +218,19 @@ class MouseWorldTourApp(QMainWindow):
     def _apply_theme(self, theme):
         self.setStyleSheet(DARK_QSS if theme == "dark" else LIGHT_QSS)
 
+    def _globe_live(self):
+        """True when it's OK to push route/position updates to the globe --
+        i.e. not while replaying a past day, and not while the stats
+        dashboard (with its location-guessing game) is open."""
+        return self._window_visible and not self._replay_active and not self._dashboard_open
+
     def _load_initial_route(self):
         origin_lat = self.storage.lifetime["origin_lat"]
         origin_lon = self.storage.lifetime["origin_lon"]
         waypoints = self.storage.all_days_waypoints()
         self.globe.init_route(origin_lat, origin_lon, waypoints)
 
-    # ---------- window visibility: show = "World Tour", hide = background tray ----------
+    #  window visibility: show = "World Tour", hide = background tray
     def show_world_tour(self):
         self._window_visible = True
         self.showMaximized()
@@ -316,11 +303,11 @@ class MouseWorldTourApp(QMainWindow):
                 self.storage.lifetime["route_segments"] = (
                     self.storage.lifetime.get("route_segments", 0) + 1
                 )
-                if self._window_visible and not self._replay_active:
+                if self._globe_live():
                     self.globe.add_waypoint(lat, lon, direction)
                 self.pending_waypoint_km = 0.0
 
-            if self._window_visible and not self._replay_active:
+            if self._globe_live():
                 self.globe.update_position(lat, lon, direction)
 
             newly = self.milestones.check(self.storage.lifetime["lifetime_distance_km"])
@@ -331,7 +318,7 @@ class MouseWorldTourApp(QMainWindow):
 
         self._last_direction = direction
         self._update_stats_labels(process_name, direction)
-        if self._window_visible and not self._replay_active:
+        if self._globe_live():
             self._push_overlay_stats()
 
     def _refresh_active_app(self):
@@ -343,7 +330,7 @@ class MouseWorldTourApp(QMainWindow):
         self.storage.lifetime["total_tracking_seconds"] = (
             self.storage.lifetime.get("total_tracking_seconds", 0) + 1
         )
-        if self._window_visible and not self._replay_active:
+        if self._globe_live():
             self._push_overlay_stats()
 
     def _push_overlay_stats(self):
@@ -382,13 +369,86 @@ class MouseWorldTourApp(QMainWindow):
             except Exception:
                 pass
 
-    # ---------- menu / tray actions ----------
+    #  menu / tray actions 
     def open_dashboard(self):
+        if not self._window_visible:
+            self.show_world_tour()
+
         if self.dashboard_dialog is None:
             self.dashboard_dialog = DashboardDialog(self.stats_panel, parent=self)
+            self.dashboard_dialog.finished.connect(self._on_dashboard_closed)
         self.dashboard_dialog.show()
         self.dashboard_dialog.raise_()
         self.dashboard_dialog.activateWindow()
+
+        # Opening the dashboard freezes the live route on the globe and
+        # kicks off a quick "guess the distance" mini-game instead.
+        self._dashboard_open = True
+        self._run_distance_guess_game()
+
+    def _on_dashboard_closed(self):
+        self._dashboard_open = False
+        if self._window_visible and not self._replay_active:
+            self._load_initial_route()
+            self._push_overlay_stats()
+
+    def _set_distance_stats_hidden(self, hidden):
+        if hidden:
+            placeholder = "❓"
+            for row in (
+                self.stats_panel.total_distance,
+                self.stats_panel.lifetime_distance,
+                self.stats_panel.today_distance,
+                self.stats_panel.dist_n,
+                self.stats_panel.dist_e,
+                self.stats_panel.dist_s,
+                self.stats_panel.dist_w,
+            ):
+                row.set_value(placeholder)
+        self.globe.set_distance_hidden(hidden)
+
+    @staticmethod
+    def _guess_feedback(accuracy):
+        if accuracy >= 90:
+            return "good job!! 🎉"
+        if accuracy >= 70:
+            return "not bad!"
+        if accuracy >= 40:
+            return "eh, could be better."
+        return "yikes, way off 😅"
+
+    def _run_distance_guess_game(self):
+        actual = self.storage.lifetime.get("lifetime_distance_km", 0.0)
+        self._set_distance_stats_hidden(True)
+
+        guess, ok = QInputDialog.getDouble(
+            self,
+            "🌍 Guess Your Journey!",
+            "How many kilometres do you think your mouse has travelled so far?",
+            value=0.0,
+            min=0.0,
+            max=1_000_000.0,
+            decimals=1,
+        )
+
+        if ok:
+            if actual > 0:
+                error_pct = abs(guess - actual) / actual * 100.0
+                accuracy = max(0.0, 100.0 - error_pct)
+            else:
+                accuracy = 100.0 if guess == 0 else 0.0
+            feedback = self._guess_feedback(accuracy)
+            QMessageBox.information(
+                self,
+                "Guess Results",
+                f"Your guess: {guess:.1f} km\n"
+                f"Actual distance: {actual:.2f} km\n\n"
+                f"You guessed {accuracy:.1f}% correct -- {feedback}",
+            )
+
+        # Reveal the real numbers again, whether they answered or cancelled.
+        self._update_stats_labels(process_name=self.last_process_name, direction=self._last_direction)
+        self._push_overlay_stats()
 
     def open_settings(self):
         dlg = SettingsDialog(self.config)
