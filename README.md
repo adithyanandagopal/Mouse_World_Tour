@@ -59,14 +59,14 @@ calibration screen; after that the app lives in the system tray — click the
 icon any time to open the World Tour globe.
 
 ### Project Documentation
-For Software:
 
-# Screenshots (Add at least 3)
 ![Calibration screen](screenshots/calibration_screen.png)
 *First-launch setup: pick your mouse sensitivity (pixels per virtual km) and starting city.*
 
 ![World Tour globe](screenshots/world_tour_globe.png)
 *The live 3D globe: home marker, current position, and the route so far, with distance,city,time in the corner.*
+
+![](screenshots/mainpy.png)
 
 
 
