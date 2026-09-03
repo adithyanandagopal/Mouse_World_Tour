@@ -44,12 +44,7 @@ Cesium.ArcGisMapServerImageryProvider.fromUrl(
   console.error('Failed to load World Imagery basemap:', err);
 });
 
-const DIRECTION_COLORS = {
-  N: Cesium.Color.DODGERBLUE,
-  E: Cesium.Color.LIMEGREEN,
-  S: Cesium.Color.CRIMSON,
-  W: Cesium.Color.GOLD,
-};
+const ROUTE_COLOR = Cesium.Color.RED;
 const DIRECTION_ARROWS = { N: '⬆', E: '➡', S: '⬇', W: '⬅' };
 function emojiCanvas(emoji, size) {
   const canvas = document.createElement('canvas');
@@ -85,9 +80,8 @@ let finalizedCorners = [];
 let nextCornerToFinalize = 1; // finalizedCorners[i] is finalizable once i+1 exists
 let lastDrawnPoint = null; // {lon, lat} -- where the drawn polyline currently ends
 let allRouteEntities = [];
-let activePolyline = null;
-let activePolylineDirection = null;
-let activePolylinePositions = []; // flat [lon, lat, lon, lat, ...]
+let routePolylineEntity = null; // single continuous polyline for the whole finalized route
+let routePositions = []; // flat [lon, lat, lon, lat, ...]
 let liveTailEntity = null; // straight "in progress" edge from the drawn route's end to the live cursor
 
 let currentEntity = null;
@@ -108,24 +102,21 @@ function quadraticBezierPoint(p0, p1, p2, t) {
   };
 }
 
-function appendFinalized(flatDegreePoints, direction) {
-  const color = DIRECTION_COLORS[direction] || Cesium.Color.WHITE;
-  if (activePolyline && activePolylineDirection === direction) {
-    activePolylinePositions.push(...flatDegreePoints.slice(2)); // skip duplicate join point
-  } else {
-    activePolylinePositions = flatDegreePoints.slice();
-    activePolylineDirection = direction;
-    activePolyline = viewer.entities.add({
-      polyline: {
-        positions: Cesium.Cartesian3.fromDegreesArray(activePolylinePositions),
-        width: 6,
-        material: glowMaterial(color),
-      },
-    });
-    allRouteEntities.push(activePolyline);
+function appendFinalized(flatDegreePoints) {
+  if (routePolylineEntity) {
+    routePositions.push(...flatDegreePoints.slice(2)); // skip duplicate join point
+    routePolylineEntity.polyline.positions = Cesium.Cartesian3.fromDegreesArray(routePositions);
     return;
   }
-  activePolyline.polyline.positions = Cesium.Cartesian3.fromDegreesArray(activePolylinePositions);
+  routePositions = flatDegreePoints.slice();
+  routePolylineEntity = viewer.entities.add({
+    polyline: {
+      positions: Cesium.Cartesian3.fromDegreesArray(routePositions),
+      width: 6,
+      material: glowMaterial(ROUTE_COLOR),
+    },
+  });
+  allRouteEntities.push(routePolylineEntity);
 }
 
 // Finalizes the turn at finalizedCorners[i]: draws the straight leg-in up
@@ -139,7 +130,7 @@ function finalizeCorner(i) {
   const filletEnd = lerpPoint(C, B, FILLET_FRACTION);
 
   const legFrom = lastDrawnPoint || { lon: A.lon, lat: A.lat };
-  appendFinalized([legFrom.lon, legFrom.lat, filletStart.lon, filletStart.lat], A.direction);
+  appendFinalized([legFrom.lon, legFrom.lat, filletStart.lon, filletStart.lat]);
 
   const arcPts = [filletStart.lon, filletStart.lat];
   for (let s = 1; s <= FILLET_STEPS; s++) {
@@ -147,22 +138,20 @@ function finalizeCorner(i) {
     const p = quadraticBezierPoint(filletStart, C, filletEnd, t);
     arcPts.push(p.lon, p.lat);
   }
-  appendFinalized(arcPts, C.direction);
+  appendFinalized(arcPts);
 
   lastDrawnPoint = filletEnd;
 }
 
-function redrawLiveTail(lat, lon, direction) {
+function redrawLiveTail(lat, lon) {
   const from = lastDrawnPoint || (finalizedCorners.length ? finalizedCorners[0] : null);
   if (!from) return;
-  const color = DIRECTION_COLORS[direction] || Cesium.Color.WHITE;
   const positions = Cesium.Cartesian3.fromDegreesArray([from.lon, from.lat, lon, lat]);
   if (liveTailEntity) {
     liveTailEntity.polyline.positions = positions;
-    liveTailEntity.polyline.material = glowMaterial(color);
   } else {
     liveTailEntity = viewer.entities.add({
-      polyline: { positions, width: 6, material: glowMaterial(color) },
+      polyline: { positions, width: 6, material: glowMaterial(ROUTE_COLOR) },
     });
   }
 }
@@ -183,7 +172,7 @@ function pushPoint(lat, lon, direction) {
     finalizeCorner(nextCornerToFinalize);
     nextCornerToFinalize++;
   }
-  redrawLiveTail(lat, lon, direction);
+  redrawLiveTail(lat, lon);
 }
 
 function placeMarkers(lat, lon) {
@@ -227,7 +216,7 @@ window.initJourney = function (data) {
     nextCornerToFinalize++;
   }
   placeMarkers(last.lat, last.lon);
-  redrawLiveTail(last.lat, last.lon, last.direction);
+  redrawLiveTail(last.lat, last.lon);
   viewer.camera.flyTo({
     destination: Cesium.Cartesian3.fromDegrees(last.lon, last.lat, 4000000),
   });
@@ -246,7 +235,7 @@ window.updateCurrentPosition = function (lat, lon, direction) {
     arrowEntity.label.text = DIRECTION_ARROWS[direction] || '';
   }
   updateCoordsText(lat, lon);
-  redrawLiveTail(lat, lon, direction);
+  redrawLiveTail(lat, lon);
 };
 
 window.updateOverlayStats = function (distanceKm, city, timeStr) {
@@ -261,9 +250,8 @@ window.updateOverlayStats = function (distanceKm, city, timeStr) {
 window.clearJourney = function () {
   allRouteEntities.forEach((e) => viewer.entities.remove(e));
   allRouteEntities = [];
-  activePolyline = null;
-  activePolylineDirection = null;
-  activePolylinePositions = [];
+  routePolylineEntity = null;
+  routePositions = [];
   if (liveTailEntity) { viewer.entities.remove(liveTailEntity); liveTailEntity = null; }
   if (currentEntity) { viewer.entities.remove(currentEntity); currentEntity = null; }
   if (arrowEntity) { viewer.entities.remove(arrowEntity); arrowEntity = null; }

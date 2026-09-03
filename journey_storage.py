@@ -6,6 +6,7 @@ Layout:
 """
 import json
 import os
+import time
 from datetime import date
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +28,28 @@ DEFAULT_LIFETIME = {
     "origin_lon": None,
     "origin_name": None,
 }
+
+
+def _replace_with_retry(tmp_path, dest_path, attempts=5, delay=0.05):
+    """os.replace can raise PermissionError on Windows if the destination is
+    momentarily locked by antivirus/indexing/cloud sync -- or by a second
+    copy of this app writing the same file. Retry briefly before giving up;
+    a lost single write is far less disruptive than crashing the app.
+    """
+    last_error = None
+    for _ in range(attempts):
+        try:
+            os.replace(tmp_path, dest_path)
+            return True
+        except OSError as exc:
+            last_error = exc
+            time.sleep(delay)
+    try:
+        os.remove(tmp_path)
+    except OSError:
+        pass
+    print(f"Mouse World Tour: could not save {dest_path} ({last_error}); skipping this write.")
+    return False
 
 
 class JourneyStorage:
@@ -51,7 +74,7 @@ class JourneyStorage:
         tmp = LIFETIME_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(self.lifetime, f, indent=2)
-        os.replace(tmp, LIFETIME_FILE)
+        _replace_with_retry(tmp, LIFETIME_FILE)
 
     @staticmethod
     def _day_path(day_str):
@@ -80,7 +103,7 @@ class JourneyStorage:
         tmp = self._day_path(day_str) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(points, f, indent=2)
-        os.replace(tmp, self._day_path(day_str))
+        _replace_with_retry(tmp, self._day_path(day_str))
 
     def list_days(self):
         days = []

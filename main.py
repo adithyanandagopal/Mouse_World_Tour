@@ -9,7 +9,7 @@ direction breakdown, app-change counters, etc.) lives in its own dialog.
 import sys
 from datetime import datetime
 
-from PyQt6.QtCore import QEvent, Qt, QCoreApplication, QTimer
+from PyQt6.QtCore import QEvent, Qt, QCoreApplication, QSharedMemory, QTimer
 from PyQt6.QtGui import QFont, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -42,6 +42,26 @@ try:
 except ImportError:
     winsound = None
 
+DARK_QSS = """
+QMainWindow, QWidget, QDialog { background-color: #12151f; color: #e8e8ec; font-family: 'Segoe UI'; }
+QGroupBox { border: 1px solid #2a2f3d; border-radius: 8px; margin-top: 10px; padding-top: 8px; font-weight: 600; }
+QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; color: #c7cede; }
+QPushButton { background-color: #1e2330; border: 1px solid #333a4d; border-radius: 6px; padding: 6px 10px; }
+QPushButton:hover { background-color: #2a3145; }
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTableWidget { background-color: #1a1e2a; border: 1px solid #333a4d; border-radius: 4px; padding: 3px; }
+QMenuBar { background-color: #12151f; }
+QMenuBar::item:selected { background-color: #2a3145; }
+QMenu { background-color: #1a1e2a; }
+QMenu::item:selected { background-color: #2a3145; }
+"""
+
+LIGHT_QSS = """
+QMainWindow, QWidget, QDialog { background-color: #f4f5f8; color: #202430; font-family: 'Segoe UI'; }
+QGroupBox { border: 1px solid #d6d9e2; border-radius: 8px; margin-top: 10px; padding-top: 8px; font-weight: 600; }
+QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }
+QPushButton { background-color: #ffffff; border: 1px solid #c7cbd6; border-radius: 6px; padding: 6px 10px; }
+QPushButton:hover { background-color: #e8eaf0; }
+"""
 
 
 def format_duration(total_seconds):
@@ -545,6 +565,23 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Mouse World Tour")
     app.setQuitOnLastWindowClosed(False)  # closing to tray must not exit the app
+
+    # Refuse to start a second copy -- two instances would both write the
+    # same data files (racing each other, and occasionally hitting a
+    # WinError 5 when one tries to replace a file the other has open) and
+    # would double-count your tracked distance. QSharedMemory.create() fails
+    # if another instance already holds this key; Windows frees the key
+    # automatically if that instance crashes, so this can't get stuck.
+    single_instance_lock = QSharedMemory("MouseWorldTour-SingleInstanceLock-9f3a2b")
+    if not single_instance_lock.create(1):
+        QMessageBox.information(
+            None,
+            "Mouse World Tour",
+            "Mouse World Tour is already running in the background.\n"
+            "Look for the \U0001F42D icon in your system tray.",
+        )
+        sys.exit(0)
+
     window = MouseWorldTourApp()
     sys.exit(app.exec())
 

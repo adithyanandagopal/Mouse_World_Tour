@@ -14,19 +14,16 @@
 - Member 2: MOHAMMED YASEEN - MODEL ENGINEERING COLLEGE
 
 ### Project Description
-Mouse World Tour is a Windows tray app that quietly tracks how far you move
-your mouse, converts that into virtual kilometres, and sends you on a
-fictional trip around the Earth — direction is decided by whatever
-application window you happen to be using. Your route is drawn live on a
-spinning 3D globe.
+What if your mouse wasn't moving across a screen, but travelling through the multiverse?In Mouse World Tour, every mouse movement contributes to a virtual journey across Earth-616, direction is decided by whatever application window you happen to be using. Your route is drawn live on a spinning 3D globe.
 
-### The Problem (that doesn't exist)
-Nobody has ever needed to know how many kilometres or to where their mouse has
-"travelled" while they browse Reddit and answer emails. This is exactly
-that unnecessary information, delivered with unreasonable production
-values.
+### The Problem
+What if you could travel around the globe without actually travelling? And what if, instead of you, we let your mouse do the travelling?
 
-### The Solution (that nobody asked for)
+People spend hours browsing Reddit, answering emails, writing code, and moving their mouse around, but none of that movement gets counted as travel. Nobody really knows how many kilometres their mouse has "travelled" or where it would have ended up if those movements were mapped onto a globe.
+
+That's exactly the completely unnecessary problem we're trying to solve!
+
+### The Solution 
 We turned ordinary mouse movement into a full navigation system: pixels
 become kilometres, the app you're focused in becomes a compass direction
 (Notepad → North, Chrome → East, whatever has an N/E/S/W in its title
@@ -38,9 +35,12 @@ your mouse has visited more countries than you have.
 ## Technical Details
 ### Technologies/Components Used
 For Software:
-- Languages: Python, JavaScript, HTML/CSS
-- Frameworks/Libraries: PyQt6, PyQt6-WebEngine, Cesium.js, pywin32, psutil, matplotlib
-- Tools: Cesium.js (offline Natural Earth II imagery, no API key needed), Windows system tray + a background-thread mouse poller
+- Languages: Python 3.11, JavaScript, HTML/CSS
+- Frameworks/Libraries: PyQt6, PyQt6-WebEngine (embeds the globe in the native window), Cesium.js 1.118, matplotlib (daily-distance chart)
+- OS integration: pywin32 (cursor position + active window), psutil (process name lookup), winsound (milestone beep), QSharedMemory (single-instance lock)
+- Data: local JSON files 
+- Maps: ESRI World Imagery (free, no API key) for the satellite basemap
+- Tools: custom GPX exporter, Windows system tray + a background-thread mouse poller
 
 
 ### Implementation
@@ -62,23 +62,12 @@ icon any time to open the World Tour globe.
 For Software:
 
 # Screenshots (Add at least 3)
-![Calibration screen](screenshots/1_calibration_screen.png)
+![Calibration screen](screenshots/calibration_screen.png)
 *First-launch setup: pick your mouse sensitivity (pixels per virtual km) and starting city.*
 
-![World Tour globe](screenshots/2_world_tour_globe.png)
-*The live 3D globe: home marker, current position, and the route so far color-coded by direction (blue=N, green=E, red=S, yellow=W), with distance/city/time in the corner.*
+![World Tour globe](screenshots/world_tour_globe.png)
+*The live 3D globe: home marker, current position, and the route so far, with distance,city,time in the corner.*
 
-![Dashboard](screenshots/3_dashboard_stats.png)
-*The detailed stats dashboard: total/lifetime/today distance, per-direction breakdown, app-change and route-segment counters.*
-
-
-### Project Demo
-# Video
-[Add your demo video link here]
-*Explain what the video demonstrates*
-
-# Additional Demos
-[Add any extra demo materials/links]
 
 
 ---
