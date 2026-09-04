@@ -133,6 +133,7 @@ class MouseWorldTourApp(QMainWindow):
         self._dashboard_open = False
         self._quitting = False
         self._last_direction = None
+        self._lifetime_dirty = False
 
         self._build_ui()
         self._apply_theme(self.config.theme)
@@ -142,9 +143,13 @@ class MouseWorldTourApp(QMainWindow):
         self.tracker.movement.connect(self.on_mouse_moved)
         self.tracker.start()
 
+        # A fixed 2s interval meant up to 2s of progress could vanish if the
+        # app was killed (or crashed) before the next tick. Saving only when
+        # something actually changed, checked every 300ms, shrinks that
+        # window by ~85% without writing to disk on every single mouse tick.
         self.save_timer = QTimer(self)
-        self.save_timer.timeout.connect(self.storage.save_lifetime)
-        self.save_timer.start(2000)
+        self.save_timer.timeout.connect(self._flush_lifetime_if_dirty)
+        self.save_timer.start(300)
 
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self._refresh_active_app)
@@ -250,6 +255,14 @@ class MouseWorldTourApp(QMainWindow):
         waypoints = self.storage.all_days_waypoints()
         self.globe.init_route(origin_lat, origin_lon, waypoints)
 
+    def _mark_lifetime_dirty(self):
+        self._lifetime_dirty = True
+
+    def _flush_lifetime_if_dirty(self):
+        if self._lifetime_dirty:
+            self.storage.save_lifetime()
+            self._lifetime_dirty = False
+
     #  window visibility: show = "World Tour", hide = background tray
     def show_world_tour(self):
         self._window_visible = True
@@ -262,6 +275,9 @@ class MouseWorldTourApp(QMainWindow):
     def hide_to_tray(self):
         self._window_visible = False
         self.hide()
+        # This is the moment a user thinks of as "closing the app" -- make
+        # sure nothing tracked so far is left sitting unsaved.
+        self._flush_lifetime_if_dirty()
 
     def changeEvent(self, event):
         # Treat a plain OS-level minimize the same as "send to tray", so the
@@ -290,6 +306,7 @@ class MouseWorldTourApp(QMainWindow):
             )
             self.last_process_name = process_name
             self.storage.lifetime["last_process"] = process_name
+            self._mark_lifetime_dirty()
 
         today = self.storage.today_str()
         if today != self._today_str:
@@ -308,6 +325,7 @@ class MouseWorldTourApp(QMainWindow):
             self.storage.lifetime["current_lat"] = lat
             self.storage.lifetime["current_lon"] = lon
             self._today_total += dist_km
+            self._mark_lifetime_dirty()
 
             self.pending_waypoint_km += dist_km
             if self.pending_waypoint_km >= self.config.waypoint_interval_km:
@@ -350,6 +368,7 @@ class MouseWorldTourApp(QMainWindow):
         self.storage.lifetime["total_tracking_seconds"] = (
             self.storage.lifetime.get("total_tracking_seconds", 0) + 1
         )
+        self._mark_lifetime_dirty()
         if self._globe_live():
             self._push_overlay_stats()
 
@@ -583,6 +602,15 @@ def main():
         sys.exit(0)
 
     window = MouseWorldTourApp()
+
+    # Final safety net: catches Windows logoff/shutdown and any other
+    # Qt-initiated quit path that doesn't go through quit_app() directly.
+    def _final_flush():
+        window.storage.save_lifetime()
+        window.config.save()
+
+    app.aboutToQuit.connect(_final_flush)
+
     sys.exit(app.exec())
 
 

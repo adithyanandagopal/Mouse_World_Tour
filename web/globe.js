@@ -178,7 +178,7 @@ function pushPoint(lat, lon, direction) {
 function placeMarkers(lat, lon) {
   currentEntity = viewer.entities.add({
     position: Cesium.Cartesian3.fromDegrees(lon, lat),
-    billboard: { image: emojiCanvas('🖱️', 64), width: 36, height: 36 },
+    billboard: { image: 'cursor_image.png', width: 21, height: 32 }, // matches the source image's 359x557 aspect ratio
   });
   arrowEntity = viewer.entities.add({
     position: Cesium.Cartesian3.fromDegrees(lon, lat),
