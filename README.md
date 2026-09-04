@@ -14,21 +14,18 @@
 - Member 2: MOHAMMED YASEEN - MODEL ENGINEERING COLLEGE
 
 ### Project Description
-What if your mouse wasn't moving across a screen, but travelling through the multiverse?In Mouse World Tour, every mouse movement contributes to a virtual journey across Earth-616, direction is decided by whatever application window you happen to be using. Your route is drawn live on a spinning 3D globe.
+What if your cursor wasn't moving across a screen, but travelling through the multiverse?In Mouse World Tour, every mouse movement contributes to a virtual journey across Earth-616, direction is decided by whatever application window you happen to be using. Your route is drawn live on a spinning 3D globe.
 
 ### The Problem
-What if you could travel around the globe without actually travelling? And what if, instead of you, we let your mouse do the travelling?
+What if you could travel around the globe without actually travelling? And what if, instead of you, we let your cursor do the travelling?
 
 People spend hours browsing Reddit, answering emails, writing code, and moving their mouse around, but none of that movement gets counted as travel. Nobody really knows how many kilometres their mouse has "travelled" or where it would have ended up if those movements were mapped onto a globe.
 
 That's exactly the completely unnecessary problem we're trying to solve!
 
 ### The Solution 
-We turned ordinary mouse movement into a full navigation system: pixels
-become kilometres, the app you're focused in becomes a compass direction
-(Notepad → North, Chrome → East, whatever has an N/E/S/W in its title
-wins), and your cursor's daily grind gets plotted as a real route — complete
-with milestones ("Mouse Marathon" at 42.2 km, "Around the Earth" at
+We turned ordinary and unordinarycursor movement into a full navigation system: pixels become kilometres, the app you're focused in becomes a compass direction
+(Notepad → North, Chrome → East, whatever has an N/E/S/W in its title), and your cursor's daily grind gets plotted as a real route — complete with milestones ("Iternational Travellar" at 10k km, "Around the Earth" at
 40,075 km), a replay feature, and GPX export so you can technically claim
 your mouse has visited more countries than you have.
 
